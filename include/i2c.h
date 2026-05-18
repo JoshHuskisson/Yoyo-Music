@@ -13,7 +13,8 @@ extern "C" {
 
 /* 4. Function Prototypes (Declarations only) */
 void setup(void);
-int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, int size);
+int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size);
+int error_check(void);
 
 #ifdef __cplusplus
 }

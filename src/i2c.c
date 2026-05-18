@@ -47,35 +47,54 @@ void setup(void){
     while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
 }
 
-int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, int size) {
+/*
+return 0 - error
+return 1 - success
+*/
+int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size) {
+    if (size == 0) return 0;
+
     SERCOM0->I2CM.ADDR.bit.ADDR = (addr << 1) | 0;  // Write command
     while (!SERCOM0->I2CM.INTFLAG.bit.MB);
-    if (SERCOM0->I2CM.STATUS.bit.RXNACK) {
-        SERCOM0->I2CM.CTRLB.bit.CMD = 3;    // Issue stop
-        while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
-        return 0;
-    }
+    if (error_check()) return 0;
 
     SERCOM0->I2CM.DATA.reg = reg;               // Send register to read
     while (!SERCOM0->I2CM.INTFLAG.bit.MB);
-    if (SERCOM0->I2CM.STATUS.bit.RXNACK) {
-        SERCOM0->I2CM.CTRLB.bit.CMD = 3;    // Issue stop
-        while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
-        return 0;
-    }
+    if (error_check()) return 0;
 
     SERCOM0->I2CM.ADDR.bit.ADDR = (addr << 1) | 1;  // Read command
-    while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+    if (size == 1) {
+        // Single byte handling
+        SERCOM0->I2CM.CTRLB.bit.ACKACT = 1;
+        while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+        if (error_check()) return 0;
+        buff[0] = SERCOM0->I2CM.DATA.reg;
+    }
+    else {
+        // More than one byte handling
+        while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+        if (error_check()) return 0;
+        for (int i = 0; i < size-1; i++) {
+            while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+            buff[i] = SERCOM0->I2CM.DATA.reg;
+        }
+        // Last byte
+        SERCOM0->I2CM.CTRLB.bit.ACKACT = 1;
+        while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+        buff[size-1] = SERCOM0->I2CM.DATA.reg;
+    }
+    SERCOM0->I2CM.CTRLB.bit.CMD = 3;
+    while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
+    SERCOM0->I2CM.CTRLB.bit.ACKACT = 0;
+    
+    return 1;
+}
+
+int error_check(void){
     if (SERCOM0->I2CM.STATUS.bit.RXNACK) {
         SERCOM0->I2CM.CTRLB.bit.CMD = 3;    // Issue stop
         while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
-        return 0;
+        return 1;
     }
-    for (int i = 1; i < size; i++) {
-        buff[i-1] = SERCOM0->I2CM.DATA.reg;
-    }
-    // set NACK CONDITION
-    // read from DATA again
-
-    
+    return 0;
 }
