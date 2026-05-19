@@ -90,6 +90,25 @@ int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size) {
     return 1;
 }
 
+bool write(uint8_t addr, uint8_t data, bool stop) {
+    SERCOM0->I2CM.ADDR.bit.ADDR = (addr << 1) | 0;  // Write command
+    while (!SERCOM0->I2CM.INTFLAG.bit.MB);
+    if (error_check()) return false;
+
+    SERCOM0->I2CM.DATA.reg = data;               // Send data to write
+    while (!SERCOM0->I2CM.INTFLAG.bit.MB);
+    if (error_check()) return false;
+
+    if (stop) {
+        SERCOM0->I2CM.CTRLB.bit.CMD = 3;
+        while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
+        SERCOM0->I2CM.CTRLB.bit.ACKACT = 0;
+    }
+
+    return true;
+}
+
+
 int error_check(void){
     if (SERCOM0->I2CM.STATUS.bit.RXNACK) {
         SERCOM0->I2CM.CTRLB.bit.CMD = 3;    // Issue stop
