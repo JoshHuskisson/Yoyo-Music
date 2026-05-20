@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "sam.h"
 
-void setup(void){
+void i2c_setup(void){
     // Turn on power
     PM->APBCMASK.bit.SERCOM0_ = 1;
 
@@ -51,7 +51,7 @@ void setup(void){
 return 0 - error
 return 1 - success
 */
-int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size) {
+int i2c_write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size) {
     if (size == 0) return 0;
 
     SERCOM0->I2CM.ADDR.bit.ADDR = (addr << 1) | 0;  // Write command
@@ -90,7 +90,7 @@ int write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size) {
     return 1;
 }
 
-bool write(uint8_t addr, uint8_t data, bool stop) {
+bool i2c_write(uint8_t addr, uint8_t data, bool stop) {
     SERCOM0->I2CM.ADDR.bit.ADDR = (addr << 1) | 0;  // Write command
     while (!SERCOM0->I2CM.INTFLAG.bit.MB);
     if (error_check()) return false;
