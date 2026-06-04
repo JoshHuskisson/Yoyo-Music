@@ -1,6 +1,7 @@
 #include "i2c.h"
 #include <stdio.h>
 #include "sam.h"
+#include "debug.h"
 
 void i2c_setup(void){
     // Turn on power
@@ -65,27 +66,31 @@ int i2c_write_read(uint8_t addr, uint8_t reg, uint8_t *buff, uint32_t size) {
     SERCOM0->I2CM.ADDR.bit.ADDR = (addr << 1) | 1;  // Read command
     if (size == 1) {
         // Single byte handling
-        SERCOM0->I2CM.CTRLB.bit.ACKACT = 1;
         while (!SERCOM0->I2CM.INTFLAG.bit.SB);
         if (error_check()) return 0;
+        SERCOM0->I2CM.CTRLB.bit.ACKACT = 1;
+        SERCOM0->I2CM.CTRLB.bit.CMD = 3;
+        while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
         buff[0] = SERCOM0->I2CM.DATA.reg;
     }
     else {
         // More than one byte handling
-        while (!SERCOM0->I2CM.INTFLAG.bit.SB);
-        if (error_check()) return 0;
-        for (int i = 0; i < size-1; i++) {
+        for (uint32_t i = 0; i < size-1; i++) {
             while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+            if (error_check()) return 0;
+            SERCOM0->I2CM.CTRLB.bit.ACKACT = 0;
+            SERCOM0->I2CM.CTRLB.bit.CMD = 2;
+            while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
             buff[i] = SERCOM0->I2CM.DATA.reg;
         }
         // Last byte
-        SERCOM0->I2CM.CTRLB.bit.ACKACT = 1;
         while (!SERCOM0->I2CM.INTFLAG.bit.SB);
+        if (error_check()) return 0;
+        SERCOM0->I2CM.CTRLB.bit.ACKACT = 1;
+        SERCOM0->I2CM.CTRLB.bit.CMD = 3;
+        while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
         buff[size-1] = SERCOM0->I2CM.DATA.reg;
     }
-    SERCOM0->I2CM.CTRLB.bit.CMD = 3;
-    while (SERCOM0->I2CM.SYNCBUSY.bit.SYSOP);
-    SERCOM0->I2CM.CTRLB.bit.ACKACT = 0;
     
     return 1;
 }
