@@ -51,3 +51,12 @@ void spi_setup(void){
     SERCOM0->SPI.CTRLA.bit.ENABLE = 1;
     while(SERCOM0->SPI.SYNCBUSY.bit.ENABLE);
 }
+
+uint8_t spi_transfer(uint8_t txByte) {
+    while (!SERCOM0->SPI.INTFLAG.bit.DRE);  // wait for data reg to clear
+    SERCOM0->SPI.DATA.reg = txByte;
+    while (!SERCOM0->SPI.INTFLAG.bit.RXC);  // wait for received data
+    uint8_t rxByte = SERCOM0->SPI.DATA.reg;
+
+    return rxByte;
+}

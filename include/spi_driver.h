@@ -9,6 +9,7 @@ extern "C" {
 #include <stdint.h>
 
 void spi_setup(void);
+uint8_t spi_transfer(uint8_t txByte);
 
 
 #ifdef __cplusplus
