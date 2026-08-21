@@ -3,9 +3,8 @@
 #include <Arduino.h>
 
 // 2.4GHz radio module
-#include <SPI.h>
-#include <nRF24L01.h>
-#include <RF24.h>
+#include "spi_driver.h"
+#include "nrf24.h"
 
 #include "i2c.h"
 #include "sam.h"
@@ -32,24 +31,23 @@ double t, tx, tf, pitch, roll;
 // 2.4GHz radio module
 // PB8: CE
 // PB9: CSN
+/*
 RF24 radio(6, 7); // CE, CSN
 const byte address[6] = "00001";
+*/
+const uint8_t payload_size = 2;
 
 void setup() {
   delay(3000);
   Serial.begin(9600);
-  while (!Serial);
-  
+  //while (!Serial);
+
   // Gyro Modules
   i2c_setup();
   i2c_reg_write(MPU1, PWR_MGMT_1, 0x0);
   i2c_reg_write(MPU2, PWR_MGMT_1, 0x0);
 
-  // Radio Module
-  radio.begin();
-  radio.openWritingPipe(address);
-  radio.setPALevel(RF24_PA_MIN);
-  radio.stopListening();
+  nrf24_init_tx(payload_size);
 
   /*
   Serial.print("MPU1: ");
@@ -70,7 +68,8 @@ void setup() {
 
 void loop() {
   gyroInterface();
-  
+
+
   /*
   uint8_t buff[2];
   i2c_write_read(MPU1, GYRO_XOUT_H, buff, 2);
@@ -83,6 +82,7 @@ void loop() {
   sprintf(pbuf, "MPU1: %6d | MPU2: %6d", GyX1, GyX2);
   Serial.println(pbuf);
   */
+  
 
   delay(100);
   
@@ -90,7 +90,7 @@ void loop() {
 
 void gyroInterface() {
   uint8_t buff[4];
-  
+
   // MPU 1
   i2c_write_read(MPU1, ACCEL_XOUT_H, buff, 4);
   AcX1 = (buff[0] << 8 | buff[1]) - AcXcal1;
@@ -107,18 +107,18 @@ void gyroInterface() {
   GyX2 = (buff[0] << 8 | buff[1]) - GyXcal2;
   GyY2 = (buff[2] << 8 | buff[3]) - GyYcal2;
 
-  char pbuf[60];
-  sprintf(pbuf, "AcX1: %6d | AcY1: %6d | GyX1: %6d | GyY1: %6d", AcX1, AcY1, GyX1, GyX2);
-  Serial.println(pbuf);
+  //char pbuf[60];
+  //sprintf(pbuf, "AcX1: %6d | AcY1: %6d | GyX1: %6d | GyY1: %6d", AcX1, AcY1, GyX1, GyX2);
+  //Serial.println(pbuf);
 
   // Combining readings together
-  //int16_t comb_AcX = (AcX1 - AcX2) / 2; // subracting one from the other since the sensors are flipped 180 degrees from eachother on the board
-  //int16_t comb_AcY = (AcY1 - AcY2) / 2;
+  int16_t comb_AcX = (AcX1 - AcX2) / 2; // subracting one from the other since the sensors are flipped 180 degrees from eachother on the board
+  int16_t comb_AcY = (AcY1 - AcY2) / 2;
 
-  //int16_t movement = sqrt(comb_AcX * comb_AcX + comb_AcY * comb_AcY);
-  //Serial.println(AcX);
-  //radio.write(&movement, sizeof(movement));
-  //Serial.println(movement);
+  int16_t movement = sqrt(comb_AcX * comb_AcX + comb_AcY * comb_AcY);
+  Serial.println(movement);
+  nrf24_send(&movement, sizeof(movement));
+  
 }
 
 void getAngle(int Ax, int Ay, int Az) {
