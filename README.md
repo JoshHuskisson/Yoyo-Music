@@ -1,0 +1,1 @@
+The main goal of this project is to translate the movement of a yo-yo to changes in music. 
